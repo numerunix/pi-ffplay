@@ -1,0 +1,77 @@
+#!/bin/bash
+#
+# Have the user choose a video, and then try to play it
+# using a V4L2 M2M codec, if possible. Basically, a
+# trivial wrapper around ffplay, that tries to
+# select the correct codec (since atm ffmpeg will
+# not do this automatically).
+#
+# Designed to allow the straightforward leverage of
+# the RPi3's hardware-assisted video decoding from
+# a 64-bit userland. Will become redundant once
+# vlc etc. start exploiting v4l2 m2m properly.
+#
+# If a video path is given as the (only) argument,
+# this will be used as the target, and no file chooser
+# will be shown.
+#
+# Copyright (c) 2019 sakaki <sakaki@deciban.com>
+# License: GPL v3+
+# NO WARRANTY
+
+set -e
+set -u
+shopt -s nullglob
+
+OK_EXT="*.mp4 *.mov *.avi *.mkv *.h264 *.mpg *.mpeg *.MP4 *.MOV *.AVI *.MKV *.H264 *.MPG *.MPEG"
+PROMPT="Please choose a video file to play"
+ICON="/usr/share/pixmaps/pi-ffplay.png"
+if [[ $# -eq 0 ]]; then
+    if ! FILE="$(zenity --file-selection --file-filter="${OK_EXT}" --title="${PROMPT}")"; then
+        exit 1
+    fi
+else
+    FILE="${1}"
+fi
+# try to discover the file type
+# really need more error checking here for e.g.
+# multiple video streams in a file
+if ! VID_INFO="$(ffprobe -i "${FILE}" |& grep "Stream.*Video")"; then
+    zenity --window-icon="${ICON}" --error --no-wrap --text="Could not determine video stream type!" --timeout=5
+    exit 1
+fi
+# choose an appropriate v4l2 m2m decoder, if we can
+V4L2M2M_CODEC=""
+CODEC_ENABLED=0
+# just deal with main types of codec
+if [[ ${VID_INFO} =~ h264 ]]; then
+    V4L2M2M_CODEC="h264_v4l2m2m"
+    [[ $(vcgencmd codec_enabled H264) =~ enabled ]] && CODEC_ENABLED=1
+elif [[ ${VID_INFO} =~ mpeg4 ]]; then
+    V4L2M2M_CODEC="mpeg4_v4l2m2m"
+    [[ $(vcgencmd codec_enabled MPG4) =~ enabled ]] && CODEC_ENABLED=1
+elif [[ ${VID_INFO} =~ mpeg2video ]]; then
+    V4L2M2M_CODEC="mpeg2_v4l2m2m"
+    [[ $(vcgencmd codec_enabled MPG2) =~ enabled ]] && CODEC_ENABLED=1
+elif zenity --window-icon="${ICON}" --question --title="Play using software codec?" --no-wrap --text "No hardware (v4l2 m2m) codec known for this stream type!\n\nWould you like to play anyway (using a software codec)?"; then
+    CODEC_ENABLED=1
+else
+    exit 1
+fi
+# make sure license exists
+if ((CODEC_ENABLED==0)); then
+    if zenity --window-icon="${ICON}" --question --title="Play using software codec?" --no-wrap --text "The necessary hardware codec exists, but is not currently enabled!\nYou may need to buy a license from the RPF to enable it.\n\nWould you like to play anyway (using a software codec)?"; then
+        V4L2M2M_CODEC=""
+    else
+        exit 1
+    fi
+fi
+# looks good to go, play it!
+VC=""
+if [[ -z "${V4L2M2M_CODEC}" ]]; then
+    TITLE="${FILE} (sw codec only)"
+else
+    TITLE="${FILE} (hw codec: ${V4L2M2M_CODEC})"
+    VC="-vcodec ${V4L2M2M_CODEC}"
+fi
+ffplay ${VC} -i "${FILE}" -window_title "${TITLE}" &>/dev/null
