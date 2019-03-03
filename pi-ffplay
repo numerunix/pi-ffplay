@@ -26,6 +26,12 @@ shopt -s nullglob
 OK_EXT="*.mp4 *.mov *.avi *.mkv *.h264 *.mpg *.mpeg *.MP4 *.MOV *.AVI *.MKV *.H264 *.MPG *.MPEG"
 PROMPT="Please choose a video file to play"
 ICON="/usr/share/pixmaps/pi-ffplay.png"
+MJR_VER=$(uname -r | cut -d '.' -f1)
+MNR_VER=$(uname -r | cut -d '.' -f2)
+if ((MJR_VER<4 || (MJR_VER==4 && MNR_VER<19))); then
+    zenity --window-icon="${ICON}" --error --no-wrap --text="You must be running <i>at least</i> kernel version 4.19 to use this!" --timeout=5
+    exit 1
+fi
 if [[ $# -eq 0 ]]; then
     if ! FILE="$(zenity --file-selection --file-filter="${OK_EXT}" --title="${PROMPT}")"; then
         exit 1
@@ -74,4 +80,4 @@ else
     TITLE="${FILE} (hw codec: ${V4L2M2M_CODEC})"
     VC="-vcodec ${V4L2M2M_CODEC}"
 fi
-ffplay ${VC} -i "${FILE}" -window_title "${TITLE}" &>/dev/null
+ffplay ${VC} -i "${FILE}" -window_title "${TITLE}" -nostats -loglevel 0
