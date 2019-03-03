@@ -32,6 +32,11 @@ if ((MJR_VER<4 || (MJR_VER==4 && MNR_VER<19))); then
     zenity --window-icon="${ICON}" --error --no-wrap --text="You must be running <i>at least</i> kernel version 4.19 to use this!" --timeout=5
     exit 1
 fi
+GPU_MEM_MIB="$(grep -o '[[:digit:]]*' <(vcgencmd get_mem gpu))"
+if ((GPU_MEM_MIB<96)); then
+    zenity --window-icon="${ICON}" --error --no-wrap --text="You must set gpu_mem=96 (or greater) to use this!\n\nIf also using the camera, gpu_mem=128 is required." --timeout=5
+    exit 1
+fi
 if [[ $# -eq 0 ]]; then
     if ! FILE="$(zenity --file-selection --file-filter="${OK_EXT}" --title="${PROMPT}")"; then
         exit 1
