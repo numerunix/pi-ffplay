@@ -7,7 +7,7 @@
 # not do this automatically).
 #
 # Designed to allow the straightforward leverage of
-# the RPi3's hardware-assisted video decoding from
+# the RPi3/RPi4's hardware-assisted video decoding from
 # a 64-bit userland. Will become redundant once
 # vlc etc. start exploiting v4l2 m2m properly.
 #
