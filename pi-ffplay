@@ -76,10 +76,9 @@ if ((CODEC_ENABLED==0)); then
     else
         exit 1
     fi
-fi
-# check no other competing process running
-# (just a quick check, not watertight)
-if pgrep --full 'ff(mpeg|play).*(/dev/video|v4l2m2m)' &>/dev/null; then
+elif pgrep --full 'ff(mpeg|play).*(/dev/video|v4l2m2m)' &>/dev/null; then
+    # looks like another competing process running
+    # (this is not a watertight check, since just a demo app)
     zenity --window-icon="${ICON}" --error --no-wrap --text="Another application appears to be using V4L2. Quitting." --timeout=5
     exit 1
 fi
