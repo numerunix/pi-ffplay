@@ -14,3 +14,5 @@ automatically).
 
 Will become redundant once apps like `vlc` etc. start exploiting
 v4l2 m2m properly.
+
+For using it you need ffmpeg and userland of raspberry pi
